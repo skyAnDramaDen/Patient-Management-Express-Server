@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Patient = require("../models/patient");
+const { Op } = require('sequelize');
 
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
@@ -26,6 +27,26 @@ router.post("/create", async (req, res) => {
     } catch (err) {
         console.error('Failed to create patient:', err);
         res.status(500).json({ error: 'Failed to create patient' });
+    }
+});
+
+router.get('/get-patients-by-name', async (req, res) => {
+    console.log("im being visited herer");
+    const { search } = req.query;
+  
+    try {
+      const patients = await Patient.findAll({
+        where: {
+          firstName: {
+            [Op.like]: `%${search}%`
+          }
+        }
+      });
+  
+      res.json(patients);
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      res.status(500).send('Server Error');
     }
 });
 

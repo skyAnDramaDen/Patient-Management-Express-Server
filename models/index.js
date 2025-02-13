@@ -1,28 +1,43 @@
-const Doctor = require('./doctor');
-const Patient = require('./patient');
-const Appointment = require('./appointment');
-const ScheduleModel = require('./schedule');
+'use strict';
 
-const { DataTypes } = require('sequelize');
+const fs = require('fs');
+const path = require('path');
+const Sequelize = require('sequelize');
+const process = require('process');
+const basename = path.basename(__filename);
+const env = process.env.NODE_ENV || 'development';
+const config = require(__dirname + '/../config/config.json')[env];
+const db = {};
 
-const sequelize = require('../db');
-const Schedule = ScheduleModel(sequelize, DataTypes);
+let sequelize;
+if (config.use_env_variable) {
+  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+} else {
+  sequelize = new Sequelize(config.database, config.username, config.password, config);
+}
 
-// Define the many-to-many relationship
-Doctor.belongsToMany(Patient, { through: 'DoctorPatient' });
-Patient.belongsToMany(Doctor, { through: 'DoctorPatient' });
+fs
+  .readdirSync(__dirname)
+  .filter(file => {
+    return (
+      file.indexOf('.') !== 0 &&
+      file !== basename &&
+      file.slice(-3) === '.js' &&
+      file.indexOf('.test.js') === -1
+    );
+  })
+  .forEach(file => {
+    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
+    db[model.name] = model;
+  });
 
-// Define one-to-many relationships
-Patient.hasMany(Appointment, { foreignKey: 'patientId' });
-Doctor.hasMany(Appointment, { foreignKey: 'doctorId' });
-Appointment.belongsTo(Patient, { foreignKey: 'patientId' });
-Appointment.belongsTo(Doctor, { foreignKey: 'doctorId' });
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
 
-Doctor.hasMany(Schedule, { foreignKey: 'doctorId' });
-Schedule.belongsTo(Doctor, { foreignKey: 'doctorId' });
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
 
-sequelize.sync({ alter: true }) // Use `alter: true` during development
-    .then(() => console.log('✅ Database synced'))
-    .catch(err => console.error('❌ Error syncing database:', err));
-
-module.exports = { Patient, Doctor, Appointment, Schedule };
+module.exports = db;

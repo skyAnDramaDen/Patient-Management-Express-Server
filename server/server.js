@@ -23,9 +23,12 @@ sequelize.sync()
 
 
 const patientRouter = require("../routes/patientRouter");
+const doctorRouter = require("../routes/doctorRouter");
+const scheduleRouter = require("../routes/scheduleRouter");
 
 app.use('/patients', patientRouter);
-
+app.use('/doctors', doctorRouter);
+app.use('/schedule', scheduleRouter);
 
 app.get("/", (req, res) => {
     console.log("This is the get first 111");
