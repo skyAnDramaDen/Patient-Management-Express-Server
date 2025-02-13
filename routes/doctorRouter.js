@@ -11,7 +11,7 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 router.get('/', async (req, res) => {
-    console.log("ResponseResponseResponseResponseResponseResponseResponseResponseResponse");
+    // console.log("ResponseResponseResponseResponseResponseResponseResponseResponseResponse");
     // const query = `
     //     SELECT *
     //     FROM doctors 
@@ -39,10 +39,10 @@ router.get('/', async (req, res) => {
             ]
         });
         
-        console.log(doctors);
+        // console.log(doctors);
         res.json(doctors);
     } catch (error) {
-        console.error('Error fetching doctors:', error);
+        // console.error('Error fetching doctors:', error);
         res.status(500).json({ error: 'Failed to fetch doctors' });
     }
 });
@@ -61,7 +61,7 @@ router.post("/create", async (req, res) => {
         res.status(201).json(doctor);
 
     } catch (err) {
-        console.error('Failed to create doctor:', err);
+        // console.error('Failed to create doctor:', err);
         res.status(500).json({ error: 'Failed to create doctor' });
     }
 });

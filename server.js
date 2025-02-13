@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-const { Doctor, Patient, Appointment } = require('../models');
-const sequelize = require("../db");
+const { Doctor, Patient, Appointment } = require('./models/index.js');
+const sequelize = require("./db.js");
 
 const app = express();
 const port = 3000;
@@ -22,9 +22,9 @@ sequelize.sync()
     .catch(err => console.error('Failed to sync database:', err));
 
 
-const patientRouter = require("../routes/patientRouter");
-const doctorRouter = require("../routes/doctorRouter");
-const scheduleRouter = require("../routes/scheduleRouter");
+const patientRouter = require("./routes/patientRouter.js");
+const doctorRouter = require("./routes/doctorRouter.js");
+const scheduleRouter = require("./routes/scheduleRouter.js");
 
 app.use('/patients', patientRouter);
 app.use('/doctors', doctorRouter);

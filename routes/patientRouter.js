@@ -1,10 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const Patient = require("../models/patient");
 const { Op } = require('sequelize');
+
+const { Doctor, Patient, Appointment, Schedule, User } = require('../models');
+
+const bcrypt = require('bcryptjs');
+const saltRounds = 10;
 
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
+
 
 
 // Define the home route
@@ -20,9 +25,17 @@ router.get('/', async (req, res) => {
 });
 
 router.post("/create", async (req, res) => {
+    const { username, password, role } = req.body.user;
+
+    console.log(req.body);
+
     try {
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const user = await User.create({ username, password: hashedPassword, role });
         console.log('Request Body:', req.body);
-        const patient = await Patient.create(req.body);
+
+        const patientData = { ...req.body.patient, userId: user.id };
+        const patient = await Patient.create(patientData);
         res.status(201).json(patient);
     } catch (err) {
         console.error('Failed to create patient:', err);

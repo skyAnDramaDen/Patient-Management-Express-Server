@@ -1,43 +1,45 @@
-'use strict';
+const sequelize = require('../db');
+const User = require('./user'); 
+const Doctor = require('./doctor');
+const Patient = require('./patient');
+const Appointment = require('./appointment'); 
+const Schedule = require('./schedule');
+const DoctorPatient = require('./doctorPAtient');
 
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const process = require('process');
-const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
-const db = {};
+Doctor.belongsToMany(Patient, { through: 'DoctorPatient' });
+Patient.belongsToMany(Doctor, { through: 'DoctorPatient' });
 
-let sequelize;
-if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
-} else {
-  sequelize = new Sequelize(config.database, config.username, config.password, config);
-}
 
-fs
-  .readdirSync(__dirname)
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+User.hasOne(Doctor, { foreignKey: 'userId' });
+Doctor.belongsTo(User, { foreignKey: 'userId' });
 
-Object.keys(db).forEach(modelName => {
-  if (db[modelName].associate) {
-    db[modelName].associate(db);
+User.hasOne(Patient, { foreignKey: 'userId' });
+Patient.belongsTo(User, { foreignKey: 'userId' });
+
+Doctor.hasMany(Appointment, { foreignKey: 'doctorId' });
+Appointment.belongsTo(Doctor, { foreignKey: 'doctorId' });
+
+Patient.hasMany(Appointment, { foreignKey: 'patientId' });
+Appointment.belongsTo(Patient, { foreignKey: 'patientId' });
+
+Doctor.hasMany(Schedule, { foreignKey: 'doctorId', as: "schedules" });
+Schedule.belongsTo(Doctor, { foreignKey: 'doctorId' });
+
+
+(async () => {
+  try {
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { raw: true }); // Disable foreign key checks
+    await User.sync();
+    await Doctor.sync();
+    await Patient.sync();
+    await DoctorPatient.sync(); // Ensure the junction table is created after doctors and patients
+    await Appointment.sync();
+    await Schedule.sync();
+    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true }); // Re-enable foreign key checks
+    console.log('Database synchronized successfully.');
+  } catch (error) {
+    console.error('Error synchronizing database:', error);
   }
-});
+})();
 
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
-
-module.exports = db;
+module.exports = { User, Doctor, Patient, Appointment, Schedule };

@@ -3,17 +3,11 @@ const router = express.Router();
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
-// const Doctor = require("../models/doctor");
-// const Schedule = require("../models/schedule");
-const { Doctor, Patient, Appointment, Schedule } = require('../models');
+const { Doctor, Patient, Appointment, Schedule, User } = require('../models');
 
 console.log(Schedule);
 
-
 const sequelize = require('../db');
-
-
 
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
@@ -24,11 +18,29 @@ router.post('/register', async (req, res) => {
   
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
-      const user = await User.create({ username, password: hashedPassword, role });
+
+      const allowedRoles = ["doctor", "nurse", "admin", "superadmin", "patients"];
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+    const user = await User.create({ username, email, password, role });
+    res.status(201).json({ message: "User registered successfully", user });
   
-      res.status(201).json({ message: 'User created successfully', user });
     } catch (error) {
       console.error('Error creating user:', error);
       res.status(500).send('Server Error');
     }
   });
+
+exports.register = async (req, res) => {
+  try {
+    const { username, email, password, role } = req.body;
+
+    // Prevent unauthorized role assignment
+    
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
