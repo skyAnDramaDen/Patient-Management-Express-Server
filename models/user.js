@@ -28,9 +28,4 @@ const User = sequelize.define('User', {
   timestamps: true // Enables createdAt & updatedAt
 });
 
-User.beforeCreate(async (user) => {
-  user.password = await bcrypt.hash(user.password, 10);
-});
-
-
 module.exports = User;
