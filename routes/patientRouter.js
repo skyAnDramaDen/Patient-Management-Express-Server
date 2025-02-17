@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 
 const { Doctor, Patient, Appointment, Schedule, User } = require('../models');
 
-const bcrypt = require('bcryptjs');
+const argon2 = require('argon2');
 const saltRounds = 10;
 
 router.use(express.json());
@@ -30,7 +30,7 @@ router.post("/create", async (req, res) => {
     console.log(req.body);
 
     try {
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const hashedPassword = await argon2.hash(password.trim());
         const user = await User.create({ username, password: hashedPassword, role });
         console.log('Request Body:', req.body);
 
@@ -63,7 +63,7 @@ router.get('/get-patients-by-name', async (req, res) => {
     }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/edit/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const [updated] = await Patient.update(req.body, {
@@ -80,5 +80,22 @@ router.put('/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to update patient' });
     }
 });
+
+router.post('/delete/:id', async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const patient = await Patient.findByPk(id);
+  
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+  
+      await patient.destroy();
+      res.status(200).json({ message: "Patient deleted successfully" });
+    } catch (err) {
+  
+    }
+  })
 
 module.exports = router;

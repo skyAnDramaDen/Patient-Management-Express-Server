@@ -4,7 +4,7 @@ const { Doctor, Patient, Appointment, Schedule, User } = require('../models');
 
 const sequelize = require('../db');
 
-const bcrypt = require('bcryptjs');
+const argon2 = require('argon2');
 const saltRounds = 10;
 
 router.use(express.json());
@@ -51,7 +51,7 @@ router.post("/create", async (req, res) => {
     const { username, password, role } = req.body.user;
 
     try {
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        const hashedPassword = await argon2.hash(password.trim());
         
         const user = await User.create({ username, password: hashedPassword, role });
         
@@ -66,5 +66,22 @@ router.post("/create", async (req, res) => {
     }
 });
 
+
+router.post('/delete/:id', async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const doctor = await Doctor.findByPk(id);
+  
+      if (!doctor) {
+        return res.status(404).json({ message: "Doctor not found" });
+      }
+  
+      await doctor.destroy();
+      res.status(200).json({ message: "Doctor deleted successfully" });
+    } catch (err) {
+  
+    }
+  })
 
 module.exports = router;

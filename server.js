@@ -19,10 +19,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.post('/login', login);
 
-// app.use(authenticate);
+app.use(authenticate);
 
-
-// Sync database
 sequelize.sync()
     .then(() => {
         console.log('Database synced');

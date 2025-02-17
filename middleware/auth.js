@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 
-// Secret key (should be same as in login)
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'ganymeyde';
 
 const authenticate = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -12,7 +11,6 @@ const authenticate = async (req, res, next) => {
   }
 
   try {
-    // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findByPk(decoded.userId);
 
@@ -20,7 +18,6 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
 
-    // Attach user to request for further use
     req.user = user;
     next();
   } catch (error) {
