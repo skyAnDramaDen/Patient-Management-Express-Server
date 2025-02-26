@@ -1,10 +1,7 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../db'); // Adjust the path as necessary
+const sequelize = require('../db');
 
-
-const bcrypt = require('bcryptjs');
-
-const User = sequelize.define('User', {
+const User = sequelize.define('user', {
   id: { 
     allowNull: false,
     autoIncrement: true,
@@ -25,7 +22,7 @@ const User = sequelize.define('User', {
     allowNull: false
   }
 }, {
-  timestamps: true // Enables createdAt & updatedAt
+  timestamps: true
 });
 
 module.exports = User;

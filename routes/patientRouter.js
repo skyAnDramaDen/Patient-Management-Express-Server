@@ -10,9 +10,6 @@ const saltRounds = 10;
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-
-
-// Define the home route
 router.get('/', async (req, res) => {
     try {
         const patients = await Patient.findAll();

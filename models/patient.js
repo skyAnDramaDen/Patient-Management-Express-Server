@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../db');
 
-const Patient = sequelize.define('Patient', {
+const Patient = sequelize.define('patient', {
     id:{ 
         allowNull: false,
         autoIncrement: true,

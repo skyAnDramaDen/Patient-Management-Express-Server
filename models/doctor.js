@@ -3,7 +3,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../db');
 
 const Doctor = sequelize.define(
-    'Doctor',
+    'doctor',
     {
         id:{ 
             allowNull: false,
@@ -86,7 +86,7 @@ const Doctor = sequelize.define(
             unique: false
         },
     },
-    { timestamps: true } // Enables createdAt & updatedAt
+    { timestamps: true }
 );
 
 module.exports = Doctor;

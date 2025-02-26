@@ -1,26 +1,31 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../db');
 
-const Appointment = sequelize.define('Appointment', {
+const Appointment = sequelize.define('appointment', {
   id: {
     allowNull: false,
     autoIncrement: true,
     primaryKey: true,
     type: DataTypes.INTEGER
   },
-  appointmentDate: {
+  date: {
     type: DataTypes.DATE,
+    allowNull: false
+  },
+  time: {
+    type: DataTypes.TIME,
     allowNull: false
   },
   reason: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true
   },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
   },
   patientId: {
+    allowNull: false,
     type: DataTypes.INTEGER,
     references: {
       model: 'Patients',
@@ -28,6 +33,7 @@ const Appointment = sequelize.define('Appointment', {
     }
   },
   doctorId: {
+    allowNull: false,
     type: DataTypes.INTEGER,
     references: {
       model: 'Doctors',

@@ -27,7 +27,7 @@ exports.login = async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    // Respond with the token and user info (optional)
+    // Respond with the token and user info
     res.json({
       message: 'Login successful',
       token,
