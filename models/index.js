@@ -6,6 +6,9 @@ const Appointment = require('./appointment');
 const Schedule = require('./schedule');
 const DoctorPatient = require('./doctorPAtient');
 const MedicalRecord = require('./medicalRecord');
+const Message = require("./message");
+const Floor = require("./floor");
+const Ward = require("./ward");
 
 Doctor.belongsToMany(Patient, { through: 'DoctorPatient' });
 Patient.belongsToMany(Doctor, { through: 'DoctorPatient' });
@@ -25,9 +28,20 @@ Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: "patient" });
 Doctor.hasMany(Schedule, { foreignKey: 'doctorId', as: "schedules" });
 Schedule.belongsTo(Doctor, { foreignKey: 'doctorId', as: "appointments" });
 
-Patient.hasOne(MedicalRecord, { foreignKey: "patientId" })
-MedicalRecord.belongsTo(Patient, { foreignKey: "patientId" })
-console.log(MedicalRecord);
+
+//below is the correct way
+Patient.hasOne(MedicalRecord, { foreignKey: "patientId", as: 'medical_record' });
+MedicalRecord.belongsTo(Patient, { foreignKey: "patientId", as: 'patient' });
+
+User.hasMany(Message, { foreignKey: 'senderId', as: 'sentMessages' });
+User.hasMany(Message, { foreignKey: 'receiverId', as: 'receivedMessages' });
+
+Message.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+Message.belongsTo(User, { foreignKey: 'receiverId', as: 'receiver' });
+
+
+Floor.hasMany(Ward, { foreignKey: 'floorId', as: "wards" });
+Ward.belongsTo(Floor, { foreignKey: 'floorId', as: "floor" });
 
 (async () => {
   try {
@@ -39,6 +53,8 @@ console.log(MedicalRecord);
     await Appointment.sync();
     await Schedule.sync();
     await MedicalRecord.sync();
+    await Message.sync();
+    await Floor.sync();
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true });
     console.log('Database synchronized successfully.');
   } catch (error) {
@@ -46,4 +62,4 @@ console.log(MedicalRecord);
   }
 })();
 
-module.exports = { User, Doctor, Patient, Appointment, Schedule, MedicalRecord };
+module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor };

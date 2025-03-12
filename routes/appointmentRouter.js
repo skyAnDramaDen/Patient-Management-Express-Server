@@ -12,16 +12,18 @@ router.get("/", async (req, res) => {
             include: [
                 {
                     model: Doctor,
-                    as: 'Doctor',
+                    as: 'doctor',
                     required: true,
                 },
                 {
                     model: Patient,
-                    as: 'Patient',
+                    as: 'patient',
                     required: true
                 }
             ]
         });
+
+        console.log(appointments);
         console.log("appointmentsorder up");
 
         res.status(201).json(appointments);
@@ -38,7 +40,7 @@ router.post("/create", async (req, res) => {
 
         console.log(created_appointment);
 
-        res.status(201).json(appointment);
+        res.status(201).json(created_appointment);
     } catch (error) {
         console.log(error);
         res.status(500).json(error);

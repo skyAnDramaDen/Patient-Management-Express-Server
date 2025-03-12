@@ -30,6 +30,7 @@ router.get('/', async (req, res) => {
 
 router.post("/create", async (req, res) => {
     console.log("loremipsorandsomeshit");
+    console.log(req.body);
     try {
         const scheduleData = {
             date: req.body.date,

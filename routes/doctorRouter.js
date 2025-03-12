@@ -12,19 +12,36 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 router.get('/', async (req, res) => {
+    console.log("im here now right abobut now rhen");
     
     try {
         const doctors = await Doctor.findAll({
+            //in the associations below, for some reason, if i include the appointment after the 
+            //schedule i do not get the appintments joined to the doctor.
             include: [
+                {
+                    model: Appointment,
+                    as: 'appointments',
+                    required: false,
+                    include: [
+                        {
+                            model: Patient,
+                            as: "patient",
+                            required: false,
+                        }
+                    ]
+                },
                 {
                     model: Schedule,
                     as: 'schedules',
                     required: false,
-                }
+                },
             ]
         });
+
+        console.log(doctors);
         
-        res.json(doctors);
+        res.status(201).json(doctors);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch doctors' });
     }
@@ -52,11 +69,13 @@ router.post("/create", async (req, res) => {
 
 
 router.put('/doctor/update/:id', async (req, res) => {
+    console.log("this is goinng to be great");
     try {
         const { id } = req.params;
         const [updated] = await Doctor.update(req.body, {
             where: { id: id }
         });
+
         if (updated) {
             const updatedDoctor = await Doctor.findOne({ where: { id: id } });
             res.status(200).json(updatedDoctor);
@@ -171,12 +190,12 @@ router.get("/doctor-appointments/:id", async (req, res) => {
             include: [
                 {
                     model: Appointment,
-                    as: 'Appointments',
+                    as: 'appointments',
                     required: false,
                     include: [
                         {
                             model: Patient,
-                            as: "Patient",
+                            as: "patient",
                             required: false,
                         }
                     ]
@@ -184,7 +203,7 @@ router.get("/doctor-appointments/:id", async (req, res) => {
             ]
         });
         
-        console.log(doctor);
+        // console.log(doctor);
 
         res.status(201).json(doctor);
     } catch (error) {

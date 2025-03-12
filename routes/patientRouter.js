@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 
-const { Doctor, Patient, Appointment, Schedule, User } = require('../models');
+const { Doctor, Patient, Appointment, Schedule, User, MedicalRecord } = require('../models');
 
 const argon2 = require('argon2');
 const saltRounds = 10;
@@ -11,9 +11,10 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 router.get('/', async (req, res) => {
+  console.log(req.user);
     try {
         const patients = await Patient.findAll();
-        console.log(patients);
+        // console.log(patients);
         res.json(patients);
     } catch (error) {
         console.error('Error fetching patients:', error);
@@ -33,10 +34,14 @@ router.post("/create", async (req, res) => {
 
         const patientData = { ...req.body.patient, userId: user.id };
         const patient = await Patient.create(patientData);
+
+        const medicalRecord = await MedicalRecord.create({ patientId: patient.id });
+        console.log('Medical Record Created:', medicalRecord);
+
         res.status(201).json(patient);
     } catch (err) {
         console.error('Failed to create patient:', err);
-        res.status(500).json({ error: 'Failed to create patient' });
+        res.status(500).json(err);
     }
 });
 
@@ -47,9 +52,18 @@ router.get('/get-patients-by-name', async (req, res) => {
     try {
       const patients = await Patient.findAll({
         where: {
-          firstName: {
-            [Op.like]: `%${search}%`
-          }
+          [Op.or]: [
+            {
+              firstName: {
+                  [Op.like]: `%${search}%`
+              }
+            },
+            {
+                lastName: {
+                    [Op.like]: `%${search}%`
+                }
+            }
+          ]
         }
       });
   
@@ -61,6 +75,7 @@ router.get('/get-patients-by-name', async (req, res) => {
 });
 
 router.put('/edit/:id', async (req, res) => {
+  console.log('whats gotta be goung on here for a ehile');
     try {
         const { id } = req.params;
         const [updated] = await Patient.update(req.body, {
@@ -93,6 +108,6 @@ router.post('/delete/:id', async (req, res) => {
     } catch (err) {
   
     }
-  })
+})
 
 module.exports = router;
