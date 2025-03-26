@@ -124,4 +124,21 @@ router.post("/update/:id", async (req, res) => {
     }
 })
 
+router.post('/delete/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const medical_record = await MedicalRecord.findByPk(id);
+
+    if (!medical_record) {
+      return res.status(404).json({ message: "Medical record not found" });
+    }
+
+    await medical_record.destroy();
+    res.status(200).json({ message: "Medical Record deleted successfully" });
+  } catch (error) {
+      console.log(error);
+  }
+})
+
 module.exports = router;

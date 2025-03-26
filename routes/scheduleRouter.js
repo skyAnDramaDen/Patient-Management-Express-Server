@@ -48,5 +48,22 @@ router.post("/create", async (req, res) => {
     }
 });
 
+router.post('/delete/:id', async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const schedule = await Schedule.findByPk(id);
+  
+      if (!schedule) {
+        return res.status(404).json({ message: "Schedule not found" });
+      }
+  
+      await schedule.destroy();
+      res.status(200).json({ message: "Schedule deleted successfully" });
+    } catch (error) {
+        console.log(error);
+    }
+})
+
 
 module.exports = router;

@@ -1,6 +1,10 @@
+require("dotenv").config();
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+
+// (process.env.STRIPE_PRIVATE_KEY)
 
 const http = require("http");
 const { Server } = require("socket.io");
@@ -35,19 +39,13 @@ app.use(authenticate);
 
 let users = {};
 
-// io.use((socket, next) => {
-//     console.log("New socket connection attempt:", socket.handshake.query);
-//     next();
-// });
-
 io.on("connection", (socket) => {
     const userId = socket.handshake.query.userId;
     const role = socket.handshake.query.role;
 
     socket.on("join", ({ username, role, userId }) => {
         users[socket.id] = { username, role, userId };
-        // console.log(`${username} (${role}) joined with socket ID: ${socket.id}`);
-        // io.emit("users", Object.values(users));
+        
         io.emit("users", Object.values(users).map(u => ({ username: u.username, role: u.role, userId: u.userId })));
     });
 
@@ -96,6 +94,10 @@ const appointmentRouter = require("./routes/appointmentRouter.js");
 const medicalRecordsRouter = require("./routes/medicalRecordRouter.js");
 const wardRouter = require("./routes/wardRouter.js");
 const floorRouter = require("./routes/floorRouter.js");
+const roomRouter = require("./routes/roomRouter.js");
+const paymentRouter = require("./routes/paymentRouter.js");
+const bedRouter = require("./routes/bedRouter.js");
+const admissionRouter = require("./routes/admissionRouter.js");
 
 app.use('/patients', patientRouter);
 app.use('/doctors', doctorRouter);
@@ -105,6 +107,10 @@ app.use('/appointment', appointmentRouter);
 app.use('/medicalRecords', medicalRecordsRouter)
 app.use('/wards', wardRouter)
 app.use('/floors', floorRouter)
+app.use('/rooms', roomRouter)
+app.use('/payment', paymentRouter)
+app.use('/beds', bedRouter);
+app.use('/admissions', admissionRouter);
 
 app.get("/", (req, res) => {
     console.log("This is the get first 111");

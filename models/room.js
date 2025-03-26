@@ -1,8 +1,8 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../db');
 
-const Floor = sequelize.define(
-    'floor',
+const Room = sequelize.define(
+    'room',
     {
         id:{ 
             allowNull: false,
@@ -14,7 +14,16 @@ const Floor = sequelize.define(
             type: DataTypes.STRING,
             allowNull: false
         },
-        floorNumber: {
+        wardId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+            model: "ward",
+            key: "id"
+            },
+            onDelete: "CASCADE"
+        },
+        number: {
             type: DataTypes.INTEGER,
             allowNull: false,
             unique: true,
@@ -23,4 +32,4 @@ const Floor = sequelize.define(
     { timestamps: true }
 );
 
-module.exports = Floor;
+module.exports = Room;

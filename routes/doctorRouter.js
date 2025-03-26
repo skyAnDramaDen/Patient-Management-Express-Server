@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
     try {
         const doctors = await Doctor.findAll({
             //in the associations below, for some reason, if i include the appointment after the 
-            //schedule i do not get the appintments joined to the doctor.
+            //schedule i do not get the appintments joined to the doctor. find out why
             include: [
                 {
                     model: Appointment,
@@ -39,8 +39,6 @@ router.get('/', async (req, res) => {
             ]
         });
 
-        console.log(doctors);
-        
         res.status(201).json(doctors);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch doctors' });
@@ -49,7 +47,6 @@ router.get('/', async (req, res) => {
 
 router.post("/create", async (req, res) => {
     const { username, password, role } = req.body.user;
-    console.log(username, password, role);
 
     try {
         const hashedPassword = await argon2.hash(password.trim());
@@ -62,14 +59,11 @@ router.post("/create", async (req, res) => {
         res.status(201).json(doctor);
 
     } catch (err) {
-        // console.error('Failed to create doctor:', err);
         res.status(500).json({ error: `Failed to create doctor${err}` });
     }
 });
 
-
 router.put('/doctor/update/:id', async (req, res) => {
-    console.log("this is goinng to be great");
     try {
         const { id } = req.params;
         const [updated] = await Doctor.update(req.body, {
@@ -87,7 +81,6 @@ router.put('/doctor/update/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to update patient' });
     }
 });
-
 
 router.post('/delete/:id', async (req, res) => {
     const { id } = req.params;

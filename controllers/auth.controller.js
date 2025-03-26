@@ -18,7 +18,7 @@ exports.login = async (req, res) => {
     const isPasswordValid = await argon2.verify(user.password.trim(), password.trim());
     
     if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Invalid credentials 22222' });
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     const token = jwt.sign(

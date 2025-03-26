@@ -19,6 +19,11 @@ router.get("/", async (req, res) => {
 router.post("/create", async (req, res) => {
     console.log(req.body);
 
+    if (!req.body.floorName || !req.body.floorNumber) {
+        throw new Error("There is no floorname and no floor number");
+        return;
+    }
+
     try {
         const floor = await Floor.create(req.body);
         res.status(201).json(floor);
@@ -61,10 +66,29 @@ router.get("/get-floor-wards-by/:id", async (req, res) => {
             ]
         })
 
+        console.log()
+
         res.status(201).json(floor);
     } catch (error) {
         console.log(error);
     }
 })
+
+router.post('/delete/:id', async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const floor = await Floor.findByPk(id);
+  
+      if (!floor) {
+        return res.status(404).json({ message: "Floor not found" });
+      }
+  
+      await floor.destroy();
+      res.status(200).json({ message: "Floor deleted successfully" });
+    } catch (error) {
+        console.log(error);
+    }
+  })
 
 module.exports = router;

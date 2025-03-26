@@ -6,7 +6,6 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 router.get("/", async (req, res) => {
-    console.log("im getting to this point right now");
     try {
         const appointments = await Appointment.findAll({
             include: [
@@ -23,22 +22,15 @@ router.get("/", async (req, res) => {
             ]
         });
 
-        console.log(appointments);
-        console.log("appointmentsorder up");
-
         res.status(201).json(appointments);
     } catch (error) {
-        console.log(error);
         res.status(500).json({ error: 'Failed to fetch appointments' });
     }
 })
 
 router.post("/create", async (req, res) => {
-    console.log(req.body);
     try {
         const created_appointment = await Appointment.create(req.body);
-
-        console.log(created_appointment);
 
         res.status(201).json(created_appointment);
     } catch (error) {
