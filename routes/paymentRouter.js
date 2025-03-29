@@ -46,4 +46,44 @@ router.post("/create-checkout-session", async (req, res) => {
     }
 })
 
+router.post("/create-setup-intent", async (req, res) => {
+    try {
+        const customer = await stripe.customers.create({
+            email: req.body.email,
+        });
+
+        const setupIntent = await stripe.setupIntents.create({
+            customer: customer.id,
+            payment_method_types: ['card'],
+        });
+
+        
+        res.json({ clientSecret: setupIntent.client_secret });
+    } catch (error) {
+        console.log(error.raw);
+        res.status(500).send("Failed to create setup intent");
+    }
+});
+
+router.post("/charge-saved-payment-method", async (req, res) => {
+    try {
+        const { customerId, paymentMethodId, amount } = req.body;
+
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount,
+            currency: "gbp",
+            customer: customerId,
+            payment_method: paymentMethodId,
+            off_session: true,
+            confirm: true,
+        });
+
+        res.json({ success: true, paymentIntent });
+    } catch (error) {
+        console.log(error.raw);
+        res.status(500).send("Failed to process payment");
+    }
+});
+
+
 module.exports = router;

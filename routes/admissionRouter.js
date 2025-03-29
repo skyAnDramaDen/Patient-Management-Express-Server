@@ -1,12 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const { Op, Sequelize } = require('sequelize');
+const sequelize = require('../db');
 
-const { Doctor, Patient, Appointment, Schedule, User, Ward, Room, Bed, Admission, Floor } = require('../models');
+const { Doctor, Patient, Appointment, Schedule, User, Ward, Room, Bed, Admission, Floor, WardAdmission, Transfer, HospitalCharge } = require('../models');
 
 router.get("/", async (req, res) => {
     try {
-        const admission = Admission.findAll();
+        const admission = await Admission.findAll({
+            include: [
+                {
+                    model: Patient,
+                    as: "admissionPatient",
+                    required: true,
+                }
+            ]
+        });
 
         res.status(201).json(admission);
     } catch (error) {
@@ -15,31 +24,7 @@ router.get("/", async (req, res) => {
 })
 
 router.post("/create", async (req, res) => {
-    console.log("what about what is going on everywhere");
-    const { bedId, patientId, reasonForAdmission } = req.body;
-
-    console.log(req.body);
-
-    const patient_admissions = await Admission.findAll({
-        where: {
-            patientId: patientId,
-            status: "admitted",
-
-            //below is for negation, sql equivalent of NOT
-            // status: {
-            //     [Sequelize.Op.ne]: 'admitted'
-            // }
-        }
-    })
-
-    console.log(patient_admissions);
-
-    if (patient_admissions.length > 0) {
-        return res.status(409).json({
-            message: "The patient is already admitted and cannot be admitted again."
-        });
-    }
-
+    const { bedId, patientId, reasonForAdmission, wardId: wardId, type: type } = req.body;
     const now = new Date();
 
     const admission_data = {
@@ -48,13 +33,68 @@ router.post("/create", async (req, res) => {
         admissionDate: now,
         reasonForAdmission: reasonForAdmission,
         status: "admitted",
+        wardId: wardId,
+        type: type
     }
 
+    const transaction = await sequelize.transaction();
+
     try {
-        // const admission = await Admission.create(admission_data);
-        // res.status(201).json(admission);
+        const patient_admissions = await Admission.findAll({
+            where: {
+                patientId: patientId,
+                status: "admitted",
+    
+                //below is for negation, sql equivalent of NOT
+                // status: {
+                //     [Sequelize.Op.ne]: 'admitted'
+                // }
+            }
+        })
+    
+        if (patient_admissions.length > 0) {
+            await transaction.rollback();
+            return res.status(409).json({
+                message: "The patient is already admitted and cannot be admitted again."
+            });
+        }
+
+        const admission = await Admission.create(admission_data, { transaction });
+
+        const admissionFeeCategory = await BillingCategory.findOne({
+            where: { retrievalName: 'admission_fee' }
+        });
+
+        if (!admissionFeeCategory) {
+            await transaction.rollback();
+            return res.status(404).json({ error: 'Admission Fee category not found.' });
+        }
+
+        const hospitalCharge = await HospitalCharge.create({
+            patientId,
+            admissionId: admission.id,
+            categoryId: admissionFeeCategory.id,
+            quantity: 1,
+            ratePerUnit: admissionFeeCategory.rate,
+            totalCharge: admissionFeeCategory.rate * 1
+        });
+        
+        await WardAdmission.create({
+            admissionId: admission.id,
+            wardId: wardId,
+            transferDate: admission.admissionDate,
+        });
+
+        await transaction.commit();
+
+        res.status(201).json({
+            message: "Patient admitted successfully and Admission Fee charged.",
+            admission,
+            hospitalCharge
+        });
+        
     } catch (error) {
-        console.log(error);
+        await transaction.rollback();
         res.status(501).json(error);
     }
 });
@@ -120,14 +160,12 @@ router.get("/get-patient", async (req, res) => {
 
         res.json(patients);
     } catch (error) {
-        console.error('Error fetching patients:', error);
         res.status(500).send('Server Error');
     }
 })
 
 router.post("/get-beds-by-type", async (req, res) => {
     const bedType = req.body.bedType;
-    // console.log(bedType);
 
     try {
 
@@ -161,7 +199,6 @@ router.post("/get-beds-by-type", async (req, res) => {
             ]
         })
 
-        // console.log(beds);
         res.status(201).json(beds);
     } catch (error) {
         console.log(error);
@@ -194,8 +231,6 @@ router.get("/get-available-beds-by-ward/:id", async (req, res) => {
                 }
             ]
         })
-
-        console.log(beds);
 
         res.status(201).json(beds);
     } catch (error) {
@@ -236,10 +271,62 @@ router.get("/get-floor-wards/:id", async (req, res) => {
             ]
         })
 
-        // console.log(wards[0].rooms);
-        // console.log(wards);
-        
         res.status(201).json(wards);
+    } catch (error) {
+        console.log(error);
+    }
+})
+
+router.get("/view-admission/:id", async (req, res) => {
+    const id = req.params.id;
+
+    try {
+        const admission = await Admission.findOne({
+            where: {
+                id: id
+            },
+            include: [
+                {
+                    model: Patient,
+                    as: "admissionPatient",
+                    required: true,
+                },
+                {
+                    model: WardAdmission,
+                    as: "wardAdmissions",
+                    include: [
+                        {
+                            model: Ward,
+                            as: "ward",
+                            require: true,
+                            include: [
+                                {
+                                    model: Floor,
+                                    as: "floor",
+                                }
+                            ]
+                        }
+                    ],
+                },
+                {
+                    model: Transfer,
+                    as: "transfers",
+                    include: [
+                        {
+                            //the alias for this is shortened and thats the convention
+                            //its actually previousBedId in the association but with
+                            //aliasing, the id part of the alias is taken out.
+                            //take note
+                            model: Bed,
+                            as: "previousBed",
+                            required: true
+                        }
+                    ]
+                }
+            ]
+        })
+
+        res.status(201).json(admission);
     } catch (error) {
         console.log(error);
     }
