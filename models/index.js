@@ -16,6 +16,8 @@ const Transfer = require("./transfer");
 const WardAdmission = require("./wardAdmission");
 const HospitalCharge = require("./hospitalCharge");
 const BillingCategory = require("./billingCategory");
+const BillingInformation = require("./billingInformation");
+const ChargeBreakdown = require("./chargeBreakdown");
 
 Doctor.belongsToMany(Patient, { through: 'DoctorPatient' });
 Patient.belongsToMany(Doctor, { through: 'DoctorPatient' });
@@ -78,6 +80,18 @@ HospitalCharge.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 Admission.hasMany(HospitalCharge, { foreignKey: 'admissionId', as: 'charges' });
 HospitalCharge.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission' });
 
+Patient.hasOne(BillingInformation, { foreignKey: "patientId", as: 'billing_information' });
+BillingInformation.belongsTo(Patient, { foreignKey: "patientId", as: 'billing_information_patient' });
+
+Patient.hasMany(ChargeBreakdown, { foreignKey: 'patientId', as: 'chargeBreakdowns' });
+ChargeBreakdown.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
+
+BillingCategory.hasMany(ChargeBreakdown, { foreignKey: 'billingCategoryId', as: 'chargeBreakdowns' });
+ChargeBreakdown.belongsTo(BillingCategory, { foreignKey: 'billingCategoryId', as: 'billingCategory' });
+
+Admission.hasMany(ChargeBreakdown, { foreignKey: 'admissionId', as: 'chargeBreakdowns' });
+ChargeBreakdown.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission' });
+
 (async () => {
   try {
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { raw: true });
@@ -96,6 +110,8 @@ HospitalCharge.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission'
     await Transfer.sync();
     await HospitalCharge.sync();
     await BillingCategory.sync();
+    await BillingInformation.sync();
+    await ChargeBreakdown.sync();
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true });
     console.log('Database synchronized successfully.');
   } catch (error) {
@@ -103,4 +119,4 @@ HospitalCharge.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission'
   }
 })();
 
-module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor, Room, Bed, Admission, Transfer, WardAdmission, HospitalCharge, BillingCategory };
+module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor, Room, Bed, Admission, Transfer, WardAdmission, HospitalCharge, BillingCategory, BillingInformation, ChargeBreakdown };

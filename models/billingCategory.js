@@ -27,10 +27,16 @@ const BillingCategory = sequelize.define(
             allowNull: false,
             defaultValue: 'defaultRetrievalName',
         },
-        code: {
+        group: {
             type: DataTypes.ENUM('admission_fees', 'consultation_fees', 'ward_charges', 'miscellaneous'),
             allowNull: false
+        },
+        code: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            unique: true
         }
+        
     },
     { timestamps: true }
 );

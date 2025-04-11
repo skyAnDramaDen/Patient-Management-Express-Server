@@ -14,6 +14,7 @@ router.get("/", async (req, res) => {
         res.status(201).json(billing_category);
     } catch (error) {
         console.log(error);
+        res.status(501).json({ message: "there has been an error" })
     }
 })
 
@@ -45,10 +46,8 @@ router.post("/create", async (req, res) => {
         rate: rate,
         description: description,
         retrievalName: retrievalName,
-        code: group
+        group: group
     }
-
-    console.log(category_data);
 
     try {
         const billing_category = await BillingCategory.create(category_data);
@@ -90,6 +89,7 @@ router.post("/update/:id", async (req, res) => {
 
         await billing_category.update({ [columnName]: value });
 
+        res.status(201).json({ message: "The category was successfully updated" })
     } catch (error) {
         console.log(error);
     }
