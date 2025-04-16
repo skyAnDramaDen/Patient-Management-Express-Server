@@ -3,7 +3,10 @@ const router = express.Router();
 
 const { Doctor, Patient, Appointment, Schedule, User, Ward, Floor } = require('../models');
 
-router.get("/", async (req, res) => {
+const checkRole = require("../middleware/checkRole");
+
+
+router.get("/", checkRole(["super-admin"]), async (req, res) => {
     console.log("someone is tryiing to get the wards");
     try {
         const floors = await Floor.findAll();
@@ -16,7 +19,7 @@ router.get("/", async (req, res) => {
     }
 })
 
-router.post("/create", async (req, res) => {
+router.post("/create", checkRole(["super-admin"]), async (req, res) => {
     console.log(req.body);
 
     if (!req.body.floorName || !req.body.floorNumber) {
@@ -32,7 +35,7 @@ router.post("/create", async (req, res) => {
     }
 })
 
-router.get("/get-floor-by/:id", async (req, res) => {
+router.get("/get-floor-by/:id", checkRole(["super-admin"]), async (req, res) => {
     const id = req.params.id;
 
     try {
@@ -49,7 +52,7 @@ router.get("/get-floor-by/:id", async (req, res) => {
 })
 
 
-router.get("/get-floor-wards-by/:id", async (req, res) => {
+router.get("/get-floor-wards-by/:id", checkRole(["super-admin"]), async (req, res) => {
     const id = req.params.id;
 
     try {
@@ -74,7 +77,7 @@ router.get("/get-floor-wards-by/:id", async (req, res) => {
     }
 })
 
-router.post('/delete/:id', async (req, res) => {
+router.post('/delete/:id', checkRole(["super-admin"]), async (req, res) => {
     const { id } = req.params;
   
     try {

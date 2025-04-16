@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Doctor, Patient, Appointment, Schedule, User } = require('../models');
 const { Op } = require('sequelize');
+const moment = require("moment");
 
 const sequelize = require('../db');
 
@@ -11,9 +12,9 @@ const saltRounds = 10;
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.get('/', async (req, res) => {
-    console.log("im here now right abobut now rhen");
-    
+const checkRole = require("../middleware/checkRole");
+
+router.get('/', checkRole(["super-admin"]), async (req, res) => {
     try {
         const doctors = await Doctor.findAll({
             //in the associations below, for some reason, if i include the appointment after the 
@@ -45,7 +46,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-router.post("/create", async (req, res) => {
+router.post("/create", checkRole(["super-admin"]), async (req, res) => {
     const { username, password, role } = req.body.user;
 
     try {
@@ -63,7 +64,7 @@ router.post("/create", async (req, res) => {
     }
 });
 
-router.put('/doctor/update/:id', async (req, res) => {
+router.put('/doctor/update/:id', checkRole(["super-admin"]), async (req, res) => {
     try {
         const { id } = req.params;
         const [updated] = await Doctor.update(req.body, {
@@ -77,12 +78,11 @@ router.put('/doctor/update/:id', async (req, res) => {
             throw new Error('Doctor not found');
         }
     } catch (err) {
-        console.error('Failed to update patient:', err);
         res.status(500).json({ error: 'Failed to update patient' });
     }
 });
 
-router.post('/delete/:id', async (req, res) => {
+router.post('/delete/:id', checkRole(["super-admin"]), async (req, res) => {
     const { id } = req.params;
   
     try {
@@ -100,11 +100,9 @@ router.post('/delete/:id', async (req, res) => {
 })
 
 
-router.get("/doctor-schedule/:id", async (req, res) => {
+router.get("/doctor-schedule/:id", checkRole(["super-admin"]), async (req, res) => {
     const id = req.params.id;
 
-    console.log("jkwnfiunefuinfni fiunei vffeijnc ienfviencfine icfincinfi cfinfiue4n");
-    console.log(id);
     try {
         const doctor = await Doctor.findOne({
             where: { id: id },
@@ -130,21 +128,18 @@ router.get("/doctor-schedule/:id", async (req, res) => {
             ]
         });
 
-        // const doctorJson = doctor.get({ plain: true });
-
-
-        console.log(doctor.toJSON());
-
         res.status(201).json(doctor.toJSON());
     } catch (error) {
-        console.log(error);
+        res.status(501).json({
+            message: "there has been an error"
+        })
     }
 
 
 })
 
 
-router.get("/doctor-appointments/:id", async (req, res) => {
+router.get("/doctor-appointments/:id", checkRole(["super-admin", "doctor"]), async (req, res) => {
     const id = req.params.id;
 
     const today = new Date();
@@ -185,6 +180,9 @@ router.get("/doctor-appointments/:id", async (req, res) => {
                     model: Appointment,
                     as: 'appointments',
                     required: false,
+                    where: {
+                        // status: "scheduled"
+                    },
                     include: [
                         {
                             model: Patient,
@@ -195,44 +193,29 @@ router.get("/doctor-appointments/:id", async (req, res) => {
                 }
             ]
         });
-        
-        // console.log(doctor);
 
         res.status(201).json(doctor);
     } catch (error) {
-        console.log(error);
         res.status(500).json({ error: 'Failed to fetch doctor appointments' });
     }
 });
 
-router.get("/scheduled-for/:date", async (req, res) => {
+router.get("/scheduled-for/:date", checkRole(["super-admin"]), async (req, res) => {
     const date = req.params.date;
-    console.log(date);
 
-    // const schedules = await Schedule.findAll({
-    //     where: { date: date },
-    //     include: [
-    //       {
-    //         model: Doctor,
-    //         as: 'Doctor',
-    //         required: false,
-    //       }
-    //     ]
-    // });
+    const formattedDate = new Date(date).toISOString().split("T")[0]; 
 
     const doctors = await Doctor.findAll({
         include: [
           {
             model: Schedule,
             as: 'schedules',
-            where: { date: date },
+            where: { date: formattedDate },
             required: true
           }
         ]
     });
-      
-    console.log(doctors);
-      
+
     res.status(201).json(doctors);
 })
 

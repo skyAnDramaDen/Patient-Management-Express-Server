@@ -29,11 +29,13 @@ router.get('/', async (req, res) => {
 });
 
 router.post("/create", async (req, res) => {
-    console.log("loremipsorandsomeshit");
-    console.log(req.body);
+    const date = req.body.date;
+    const formattedDate = new Date(date).toISOString().split("T")[0]; 
+
+    const shiftDuration = req.body.endTime;
     try {
         const scheduleData = {
-            date: req.body.date,
+            date: formattedDate,
             startTime: formatTime(req.body.startTime),
             endTime: formatTime(req.body.endTime),
             status: req.body.status,
@@ -43,7 +45,6 @@ router.post("/create", async (req, res) => {
         const schedule = await Schedule.create(scheduleData);
         res.status(201).json(schedule);
     } catch (err) {
-        console.log(err);
         res.status(500).json(err);
     }
 });

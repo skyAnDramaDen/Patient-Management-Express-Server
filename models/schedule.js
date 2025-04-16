@@ -17,7 +17,7 @@ const Schedule = sequelize.define('schedule', {
     allowNull: false
   },
   date: {
-    type: DataTypes.DATE,
+    type: DataTypes.STRING,
     allowNull: false
   },
   doctorId: {

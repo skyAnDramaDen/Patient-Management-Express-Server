@@ -35,7 +35,7 @@ Patient.hasMany(Appointment, { foreignKey: 'patientId', as: "appointments" });
 Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: "patient" });
 
 Doctor.hasMany(Schedule, { foreignKey: 'doctorId', as: "schedules" });
-Schedule.belongsTo(Doctor, { foreignKey: 'doctorId', as: "appointments" });
+Schedule.belongsTo(Doctor, { foreignKey: 'doctorId', as: "doctor" });
 
 //below is the correct way
 Patient.hasOne(MedicalRecord, { foreignKey: "patientId", as: 'medical_record' });

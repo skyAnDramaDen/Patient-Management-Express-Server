@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { Op } = require("sequelize");
+const sequelize = require("../db");
 
 const {
 	Doctor,
@@ -11,14 +12,15 @@ const {
 	MedicalRecord,
 } = require("../models");
 
+const checkRole = require("../middleware/checkRole");
+
 const argon2 = require("argon2");
 const saltRounds = 10;
 
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.get("/", async (req, res) => {
-	// console.log(req.user);
+router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	let page = parseInt(req.query.page) || 1;
 	const pageSize = parseInt(req.query.pageSize) || 2;
 
@@ -29,8 +31,8 @@ router.get("/", async (req, res) => {
 		} else if (page == 2) {
 			page = 1;
 		} else if (page == 1) {
-      page = 0;
-    }
+			page = 0;
+		}
 
 		const patients = await Patient.findAll({
 			limit: pageSize,
@@ -48,40 +50,71 @@ router.get("/", async (req, res) => {
 		// // console.log(patients);
 		// res.json(patients);
 	} catch (error) {
-		console.error("Error fetching patients:", error);
 		res.status(500).json({ error: "Failed to fetch patients" });
 	}
 });
 
-router.post("/create", async (req, res) => {
-	const { username, password, role } = req.body.user;
+router.get("/patients-list", checkRole(["nurse", "doctor", "super-admin"]), async (req, res) => {
+	try {
+		const patients = await Patient.findAll({
+			include: [
+				{
+					model: MedicalRecord,
+					as: "medical_record",
+					required: true
+				}
+			]
+		})
 
-	console.log(req.body);
+		if (!patients) {
+			res.status(404).json({
+				message: "No patient records were retrieved"
+			})
+		}
+
+		res.status(201).json(patients);
+	} catch (error) {
+		res.status(501).json({
+			message: "There has been a server side error"
+		})
+	}
+})
+
+router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => {
+	const { username, password, role } = req.body.user;
+	const transaction = await sequelize.transaction();
 
 	try {
+		if (!username || !password || !role) {
+            throw new Error("Missing required user fields.");
+        }
+
 		const hashedPassword = await argon2.hash(password.trim());
 		const user = await User.create({
 			username,
 			password: hashedPassword,
 			role,
-		});
-		console.log("Request Body:", req.body);
+		}, { transaction });
+
+		if (!req.body.patient) {
+            throw new Error("Patient data is required.");
+        }
 
 		const patientData = { ...req.body.patient, userId: user.id };
-		const patient = await Patient.create(patientData);
+		
+		const patient = await Patient.create(patientData, { transaction });
 
-		const medicalRecord = await MedicalRecord.create({ patientId: patient.id });
-		console.log("Medical Record Created:", medicalRecord);
+		const medicalRecord = await MedicalRecord.create({ patientId: patient.id }, { transaction });
+		await transaction.commit();
 
 		res.status(201).json(patient);
 	} catch (err) {
-		console.error("Failed to create patient:", err);
+		await transaction.rollback();
 		res.status(500).json(err);
 	}
 });
 
-router.get("/get-patients-by-name", async (req, res) => {
-	console.log("im being visited herer");
+router.get("/get-patients-by-name", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const { search } = req.query;
 
 	try {
@@ -104,13 +137,11 @@ router.get("/get-patients-by-name", async (req, res) => {
 
 		res.json(patients);
 	} catch (error) {
-		console.error("Error fetching patients:", error);
 		res.status(500).send("Server Error");
 	}
 });
 
-router.put("/edit/:id", async (req, res) => {
-	console.log("whats gotta be goung on here for a ehile");
+router.put("/edit/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	try {
 		const { id } = req.params;
 		const [updated] = await Patient.update(req.body, {
@@ -123,12 +154,11 @@ router.put("/edit/:id", async (req, res) => {
 			throw new Error("Patient not found");
 		}
 	} catch (err) {
-		console.error("Failed to update patient:", err);
 		res.status(500).json({ error: "Failed to update patient" });
 	}
 });
 
-router.post("/delete/:id", async (req, res) => {
+router.post("/delete/:id", checkRole(["super-admin"]), async (req, res) => {
 	const { id } = req.params;
 
 	try {
@@ -140,7 +170,11 @@ router.post("/delete/:id", async (req, res) => {
 
 		await patient.destroy();
 		res.status(200).json({ message: "Patient deleted successfully" });
-	} catch (err) {}
+	} catch (err) {
+		res.status(501).json({
+			message: "There was an error deleting the patient"
+		})
+	}
 });
 
 module.exports = router;

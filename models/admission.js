@@ -60,6 +60,12 @@ const Admission = sequelize.define(
 			allowNull: false,
 			defaultValue: "admitted",
 		},
+        payment_type: {
+            type: DataTypes.ENUM("card", "cash", "bank_transfer"),
+            allowNull: true,
+            defaultValue: null,
+        },
+        
 	},
 	{ timestamps: true }
 );

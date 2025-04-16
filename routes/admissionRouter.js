@@ -24,9 +24,14 @@ const {
 	ChargeBreakdown,
 } = require("../models");
 
-router.get("/", async (req, res) => {
+const checkRole = require("../middleware/checkRole");
+
+router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	try {
 		const admission = await Admission.findAll({
+            where: {
+                status: "admitted",
+            },
 			include: [
 				{
 					model: Patient,
@@ -42,7 +47,7 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.post("/create", async (req, res) => {
+router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const {
 		bedId,
 		patientId,
@@ -75,6 +80,7 @@ router.post("/create", async (req, res) => {
 				//     [Sequelize.Op.ne]: 'admitted'
 				// }
 			},
+			transaction,
 		});
 
 		if (patient_admissions.length > 0) {
@@ -126,7 +132,7 @@ router.post("/create", async (req, res) => {
 	}
 });
 
-router.post("/delete/:id", async (req, res) => {
+router.post("/delete/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const { id } = req.params;
 
 	try {
@@ -143,7 +149,7 @@ router.post("/delete/:id", async (req, res) => {
 	}
 });
 
-router.get("/get-admission-by-patient/:id", async (req, res) => {
+router.get("/get-admission-by-patient/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const id = req.params.id;
 
 	try {
@@ -164,7 +170,7 @@ router.get("/get-admission-by-patient/:id", async (req, res) => {
 	}
 });
 
-router.get("/get-patient", async (req, res) => {
+router.get("/get-patient", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const { search } = req.query;
 
 	try {
@@ -191,7 +197,7 @@ router.get("/get-patient", async (req, res) => {
 	}
 });
 
-router.post("/get-beds-by-type", async (req, res) => {
+router.post("/get-beds-by-type", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const bedType = req.body.bedType;
 
 	try {
@@ -231,7 +237,7 @@ router.post("/get-beds-by-type", async (req, res) => {
 	}
 });
 
-router.get("/get-available-beds-by-ward/:id", async (req, res) => {
+router.get("/get-available-beds-by-ward/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const id = req.params.id;
 
 	try {
@@ -264,7 +270,7 @@ router.get("/get-available-beds-by-ward/:id", async (req, res) => {
 	}
 });
 
-router.get("/get-floors", async (req, res) => {
+router.get("/get-floors", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	try {
 		const floors = await Floor.findAll();
 		res.status(201).json(floors);
@@ -273,7 +279,7 @@ router.get("/get-floors", async (req, res) => {
 	}
 });
 
-router.get("/get-floor-wards/:id", async (req, res) => {
+router.get("/get-floor-wards/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const id = req.params.id;
 
 	try {
@@ -303,7 +309,7 @@ router.get("/get-floor-wards/:id", async (req, res) => {
 	}
 });
 
-router.get("/view-admission/:id", async (req, res) => {
+router.get("/view-admission/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const id = req.params.id;
 
 	try {
@@ -358,7 +364,7 @@ router.get("/view-admission/:id", async (req, res) => {
 	}
 });
 
-router.get("/get-admission-billing-categories", async (req, res) => {
+router.get("/get-admission-billing-categories", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	try {
 		const admission_billing_categories = await BillingCategory.findAll({
 			where: {
@@ -370,8 +376,7 @@ router.get("/get-admission-billing-categories", async (req, res) => {
 	} catch (error) {}
 });
 
-router.post("/process-payment/:id", async (req, res) => {
-    console.log("jsdbfib84e7rg34bewbf8e")
+router.post("/process-payment/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const id = req.params.id;
 
 	let quantities = {
@@ -446,13 +451,11 @@ router.post("/process-payment/:id", async (req, res) => {
 			(!fetched_patient.billing_information.paymentMethodId &&
 				!fetched_patient.billing_information.customerId)
 		) {
-            console.log("no details were found here");
 			return res.status(404).json({
 				success: false,
 				message: "Patient does not have payment method details saved.",
 			});
 		} else {
-            console.log("there are some details that it got");
 			if (
 				fetched_patient.billing_information.paymentMethodId &&
 				fetched_patient.billing_information.customerId
@@ -475,8 +478,6 @@ router.post("/process-payment/:id", async (req, res) => {
 				};
 
 				const meals = calculateStayDetails(fetched_patient);
-
-				// console.trace(meals);
 
 				const { lunches, dinners, breakfasts, hoursStayed } = meals;
 				const calculateTotal = () => {
@@ -542,25 +543,30 @@ router.post("/process-payment/:id", async (req, res) => {
 					},
 				});
 
+				charge_breakdowns.forEach((charge_breakdown) => {
+					total_amount += charge_breakdown.total;
+				});
+
 				if (charge_breakdowns.length > 0) {
-                    charge_breakdowns.forEach((charge_breakdown) => {
-                        total_amount += charge_breakdown.total;
-                    })
-				} else {
-					total_amount = calculateTotal();
+					for (const charge_breakdown of charge_breakdowns) {
+						await charge_breakdown.destroy();
+					}
+				}
 
-					for (const billing_category of billing_categories) {
-						if (individual_totals[billing_category.retrievalName]) {
-							const { quantity, total } =	individual_totals[billing_category.retrievalName];
+				total_amount = calculateTotal();
 
-							await ChargeBreakdown.create({
-								patientId: fetched_patient.id,
-								admissionId: fetched_patient.admissions[0].id,
-								billingCategoryId: billing_category.id,
-								quantity,
-								totalCost: Number(total),
-							});
-						}
+				for (const billing_category of billing_categories) {
+					if (individual_totals[billing_category.retrievalName]) {
+						const { quantity, total } =
+							individual_totals[billing_category.retrievalName];
+
+						await ChargeBreakdown.create({
+							patientId: fetched_patient.id,
+							admissionId: fetched_patient.admissions[0].id,
+							billingCategoryId: billing_category.id,
+							quantity,
+							totalCost: Number(total),
+						});
 					}
 				}
 
@@ -595,7 +601,7 @@ router.post("/process-payment/:id", async (req, res) => {
 	}
 });
 
-router.post("/save-billing-details", async (req, res) => {
+router.post("/save-billing-details", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const { patientId, paymentMethodId } = req.body;
 
 	if (!patientId || !paymentMethodId) {
@@ -609,13 +615,13 @@ router.post("/save-billing-details", async (req, res) => {
 			where: {
 				id: patientId,
 			},
-            include: [
-                {
-                    model: BillingInformation,
-                    as: "billing_information",
-                    required: false,
-                }
-            ]
+			include: [
+				{
+					model: BillingInformation,
+					as: "billing_information",
+					required: false,
+				},
+			],
 		});
 
 		if (!patient) {
@@ -630,9 +636,9 @@ router.post("/save-billing-details", async (req, res) => {
 			customer: customer.id,
 		});
 
-        if (patient.billing_information[0]) {
-            res.redirect(`/process-payment/${patientId}`);
-        }
+		if (patient.billing_information[0]) {
+			res.redirect(`/process-payment/${patientId}`);
+		}
 
 		await BillingInformation.create({
 			patientId: patientId,
@@ -651,8 +657,11 @@ router.post("/save-billing-details", async (req, res) => {
 	}
 });
 
-router.post("/discharge-patient/:id", async (req, res) => {
+router.post("/discharge-patient/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const id = req.params.id;
+	const payment_type = req.body.paymentType;
+
+    const transaction = await sequelize.transaction();
 
 	try {
 		const admission = await Admission.findOne({
@@ -662,17 +671,37 @@ router.post("/discharge-patient/:id", async (req, res) => {
 			},
 		});
 
-		// admission.dischargeDate = new Date();
+        if (!admission) {
+            return res.status(404).json({
+                success: false,
+                message: "No active admission found for this patient.",
+            });
+        }
 
-		// admission.status = "discharged";
+        if (admission.status == "discharged") {
+            return res.status(200).json({
+                success: true,
+                message: "The patient has been discharged already.",
+            });
+        }
+
+		admission.dischargeDate = new Date();
+
+		admission.status = "discharged";
+		admission.paymentType = payment_type;
 		await admission.save();
+        transaction.commit();
 		res.status(201).json({
 			success: true,
 			message: "Patient discharged successfully",
 			admission: admission,
 		});
 	} catch (error) {
-		res.status(501).json(error);
+        transaction.rollback();
+		return res.status(500).json({
+            success: false,
+            message: "An error occurred while discharging the patient.",
+        });
 	}
 });
 

@@ -3,7 +3,10 @@ const router = express.Router();
 
 const { Doctor, Patient, Appointment, Schedule, User, Ward, Room, Bed } = require('../models');
 
-router.get("/", async (req, res) => {
+const checkRole = require("../middleware/checkRole");
+
+
+router.get("/", checkRole(["super-admin"]), async (req, res) => {
     console.log("someone is tryiing to get the beds");
     try {
         const beds = Bed.findAll();
@@ -14,7 +17,7 @@ router.get("/", async (req, res) => {
     }
 })
 
-router.post("/create", async (req, res) => {
+router.post("/create", checkRole(["super-admin"]), async (req, res) => {
     const { bed, roomId } = req.body;
 
     const room = await Room.findOne({
@@ -69,7 +72,7 @@ router.post("/create", async (req, res) => {
     }
 });
 
-router.post('/delete/:id', async (req, res) => {
+router.post('/delete/:id', checkRole(["super-admin"]), async (req, res) => {
     const { id } = req.params;
   
     try {
@@ -86,7 +89,7 @@ router.post('/delete/:id', async (req, res) => {
     }
 })
 
-router.get("/get-beds-by-room/:id", async (req, res) => {
+router.get("/get-beds-by-room/:id", checkRole(["super-admin"]), async (req, res) => {
     const id = req.params.id;
     console.log(id);
 

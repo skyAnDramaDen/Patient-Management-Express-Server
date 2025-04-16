@@ -42,7 +42,7 @@ router.post("/create-checkout-session", async (req, res) => {
         
         res.json({ url: session.url });
     } catch (error) {
-        console.log(error.raw);
+        res.status(500).send("Failed to create checkout session");
     }
 })
 
@@ -60,7 +60,6 @@ router.post("/create-setup-intent", async (req, res) => {
         
         res.json({ clientSecret: setupIntent.client_secret });
     } catch (error) {
-        console.log(error.raw);
         res.status(500).send("Failed to create setup intent");
     }
 });
@@ -80,7 +79,6 @@ router.post("/charge-saved-payment-method", async (req, res) => {
 
         res.json({ success: true, paymentIntent });
     } catch (error) {
-        console.log(error.raw);
         res.status(500).send("Failed to process payment");
     }
 });
