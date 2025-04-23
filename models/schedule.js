@@ -27,6 +27,13 @@ const Schedule = sequelize.define('schedule', {
       key: 'id'
     }
   },
+  nurseId: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: 'Nurses',
+      key: 'id'
+    }
+  },
   status: {
     type: DataTypes.ENUM('available', 'unavailable', 'booked'),
     allowNull: false

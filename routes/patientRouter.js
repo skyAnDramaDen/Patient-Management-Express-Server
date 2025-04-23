@@ -135,9 +135,9 @@ router.get("/get-patients-by-name", checkRole(["nurse", "super-admin"]), async (
 			},
 		});
 
-		res.json(patients);
+		return res.json(patients);
 	} catch (error) {
-		res.status(500).send("Server Error");
+		return res.status(500).send("Server Error");
 	}
 });
 

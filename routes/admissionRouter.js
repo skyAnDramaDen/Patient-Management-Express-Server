@@ -41,9 +41,9 @@ router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
 			],
 		});
 
-		res.status(201).json(admission);
+		return res.status(201).json(admission);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -121,31 +121,35 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
 
 		await transaction.commit();
 
-		res.status(201).json({
+		return res.status(201).json({
 			message: "Patient admitted successfully and Admission Fee charged.",
 			admission,
 			hospitalCharge,
 		});
 	} catch (error) {
 		await transaction.rollback();
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
 router.post("/delete/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const { id } = req.params;
+	const transaction = await sequelize.transaction();
 
 	try {
 		const admission = await Appointment.findByPk(id);
 
 		if (!admission) {
+			await transaction.rollback();
 			return res.status(404).json({ message: "Admission not found" });
 		}
 
-		await admission.destroy();
-		res.status(200).json({ message: "Admission deleted successfully" });
+		await admission.destroy({ transaction });
+		await transaction.commit();
+		return res.status(200).json({ message: "Admission deleted successfully" });
 	} catch (error) {
-		res.status(501).json(error);
+		await transaction.rollback();
+		return res.status(500).json(error);
 	}
 });
 
@@ -164,9 +168,9 @@ router.get("/get-admission-by-patient/:id", checkRole(["nurse", "super-admin"]),
 			],
 		});
 
-		res.status(201).json(admission);
+		return res.status(201).json(admission);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -191,9 +195,9 @@ router.get("/get-patient", checkRole(["nurse", "super-admin"]), async (req, res)
 			},
 		});
 
-		res.json(patients);
+		return res.json(patients);
 	} catch (error) {
-		res.status(500).send("Server Error");
+		return res.status(500).send("Server Error");
 	}
 });
 
@@ -231,9 +235,9 @@ router.post("/get-beds-by-type", checkRole(["nurse", "super-admin"]), async (req
 			],
 		});
 
-		res.status(201).json(beds);
+		return res.status(201).json(beds);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -264,18 +268,18 @@ router.get("/get-available-beds-by-ward/:id", checkRole(["nurse", "super-admin"]
 			],
 		});
 
-		res.status(201).json(beds);
+		return res.status(201).json(beds);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
 router.get("/get-floors", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	try {
 		const floors = await Floor.findAll();
-		res.status(201).json(floors);
+		return res.status(201).json(floors);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -303,9 +307,9 @@ router.get("/get-floor-wards/:id", checkRole(["nurse", "super-admin"]), async (r
 			],
 		});
 
-		res.status(201).json(wards);
+		return res.status(201).json(wards);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -358,9 +362,9 @@ router.get("/view-admission/:id", checkRole(["nurse", "super-admin"]), async (re
 			],
 		});
 
-		res.status(201).json(admission);
+		return res.status(201).json(admission);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -372,8 +376,13 @@ router.get("/get-admission-billing-categories", checkRole(["nurse", "super-admin
 			},
 		});
 
-		res.status(201).json(admission_billing_categories);
-	} catch (error) {}
+		return res.status(201).json(admission_billing_categories);
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			message: "Admission billing categories were not fetched."
+		});
+	}
 });
 
 router.post("/process-payment/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
@@ -588,7 +597,7 @@ router.post("/process-payment/:id", checkRole(["nurse", "super-admin"]), async (
 						paymentIntent,
 					});
 				} catch (error) {
-					transaction.rollback();
+					await transaction.rollback();
 
 					return res.status(500).json({
 						success: false,
@@ -647,9 +656,9 @@ router.post("/save-billing-details", checkRole(["nurse", "super-admin"]), async 
 			billingAddress: patient.addressLine1,
 		});
 
-		res.redirect(`/process-payment/${patient.id}`);
+		return res.redirect(`/process-payment/${patient.id}`);
 	} catch (error) {
-		res.status(500).json({
+		return res.status(500).json({
 			message:
 				"An error occurred while creating the customer or attaching the payment method",
 			error,
@@ -690,14 +699,14 @@ router.post("/discharge-patient/:id", checkRole(["nurse", "super-admin"]), async
 		admission.status = "discharged";
 		admission.paymentType = payment_type;
 		await admission.save();
-        transaction.commit();
-		res.status(201).json({
+        await transaction.commit();
+		return res.status(201).json({
 			success: true,
 			message: "Patient discharged successfully",
 			admission: admission,
 		});
 	} catch (error) {
-        transaction.rollback();
+        await transaction.rollback();
 		return res.status(500).json({
             success: false,
             message: "An error occurred while discharging the patient.",

@@ -25,16 +25,16 @@ router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
             ]
         });
 
-        res.status(201).json(appointments);
+        return res.status(201).json(appointments);
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch appointments' });
+        return res.status(500).json({ error: 'Failed to fetch appointments' });
     }
 })
 
 router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	const transaction = await sequelize.transaction();
 
-    const { patientId, doctorId, time, date, status } = req.body;
+    const { patientId, doctorId, time, date, status, } = req.body;
     try {
         const existing_appointment = await Appointment.findAll({
             where: {
@@ -44,7 +44,7 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
             transaction,
         })
 
-        const existing_admission = await Admission.findAll({
+        const existing_admissions = await Admission.findAll({
             where: {
                 patientId: patientId,
                 status: "admitted",
@@ -52,8 +52,8 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
             transaction,
         })
 
-        if (existing_admission.length > 0) {
-            transaction.rollback();
+        if (existing_admissions.length > 0) {
+            await transaction.rollback();
             return res.status(400).json({
                 success: false,
                 message: "Patient is admitted and so an appointment cannot be set."
@@ -61,17 +61,17 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
         }
 
         if (existing_appointment.length > 0) {
-            transaction.rollback();
-            return res.status(400).json({ error: "Patient already has a scheduled appointment." });
+            await transaction.rollback();
+            return res.status(409).json({ error: "Patient already has a scheduled appointment." });
         }
         const created_appointment = await Appointment.create(req.body, { transaction });
-        transaction.commit();
+        await transaction.commit();
 
-        res.status(201).json(created_appointment);
+        return res.status(201).json(created_appointment);
     } catch (error) {
-        transaction.rollback();
+        await transaction.rollback();
         
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "There was a server error.",
             error: error.message || "Unknown error occurred.",
@@ -109,7 +109,7 @@ router.post("/add-appointment-note/:id", checkRole(["super-admin", "doctor"]), a
         });
     } catch (error) {
         await transaction.rollback();
-        res.status(501).json({
+        return res.status(501).json({
             message: "There has been an error adding the doctor's note"
         });
     }
@@ -138,17 +138,18 @@ router.post("/conclude-appointment/:id", checkRole(["super-admin", "doctor"]), a
         if (appointment.status == "scheduled") {
             appointment.status = "completed";
             await appointment.save({transaction});
+            await transaction.commit();
         }
 
         await transaction.commit();
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "The appointment has been completed",
             appointment: appointment
         });
     } catch (error) {
-        transaction.rollback();
-        res.status(500).json({
+        await transaction.rollback();
+        return res.status(500).json({
             success: false,
             message: "The appointment was not successfully set as completed."
         })
@@ -182,9 +183,9 @@ router.get("/get-patient-appointment/:id", checkRole(["super-admin", "nurse"]), 
             })
         }
 
-        res.status(200).json(patient);
+        return res.status(200).json(patient);
     } catch (error) {
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "There was a server error"
         });
@@ -193,7 +194,7 @@ router.get("/get-patient-appointment/:id", checkRole(["super-admin", "nurse"]), 
 
 router.post("/reschedule-patient-appointment", async (req, res) => {
     const transaction = await sequelize.transaction();
-    console.log(req.body);
+    
     const { patientId, appointmentId, date, time, doctorId } = req.body;
 
     try {
@@ -216,28 +217,69 @@ router.post("/reschedule-patient-appointment", async (req, res) => {
             transaction.rollback();
             return res.status(401).json({
                 success: false,
-                message: "Appointment is not relatred to the said patient."
+                message: "Appointment is not related to the said patient."
             })
         }
 
         appointment.doctorId = doctorId;
+
+        if (appointment.status == "cancelled") {
+            appointment.status = "scheduled";
+        }
+
         appointment.date = date;
         appointment.time = time;
         await appointment.save({ transaction })
         await transaction.commit();
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "The appointment has been rescheduled successfully",
             appointment: appointment,
         });
     } catch (error) {
         await transaction.rollback();
-        console.log(error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "There was a server error"
         });
+    }
+})
+
+router.post("/cancel-appointment/:id", checkRole(["super-admin", "admin", "nurse"]), async (req, res) => {
+    const transaction = await sequelize.transaction();
+    const id = req.params.id;
+    
+    try {
+        const appointment = await Appointment.findOne({
+            where: {
+                id: id,
+            },
+            transaction,
+        })
+
+        if (!appointment) {
+            transaction.rollback();
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found."
+            });
+        }
+        
+        appointment.status = "cancelled";
+        await appointment.save({ transaction });
+        await transaction.commit();
+        return res.status(200).json({
+            success: true,
+            message: "Appointment has been cancelled.",
+            id: id,
+        })
+    } catch (error) {
+        transaction.rollback();
+        return res.status(500).json({
+            success: false,
+            message: "The appointment was not cancelled successfully."
+        })
     }
 })
 

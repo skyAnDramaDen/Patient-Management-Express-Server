@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const argon2 = require("argon2");
+const sequelize = require("../db");
 
 const { Doctor, Patient, Appointment, Schedule, User } = require("../models");
 
@@ -9,6 +10,7 @@ router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
 router.post("/create", async (req, res) => {
+	const transaction = await sequelize.transaction();
 	const { username, password, role } = req.body;
 
 	try {
@@ -17,27 +19,28 @@ router.post("/create", async (req, res) => {
 		const allowedRoles = ["doctor", "nurse", "admin", "super-admin", "patient"];
 
 		if (!allowedRoles.includes(role)) {
+			await transaction.rollback();
 			return res.status(400).json({ message: "Invalid role" });
 		}
 		let user = await User.findOne({ where: { username } });
 
 		if (user) {
+			await transaction.rollback();
 			throw new Error("A user with this username exists already.");
 		}
-
-		const isPasswordValid = await argon2.verify(
-			hashedPassword.trim(),
-			password.trim()
-		);
 
 		user = await User.create({
 			username,
 			password: hashedPassword.trim(),
 			role,
-		});
-		res.status(201).json({ message: "User registered successfully", user });
+		}, { transaction });
+
+		await transaction.commit();
+		
+		return res.status(201).json({ message: "User registered successfully", user });
 	} catch (error) {
-		res.status(500).send("Server Error");
+		await transaction.rollback();
+		return res.status(500).send("Server Error");
 	}
 });
 
@@ -73,9 +76,9 @@ router.put("/edit/:id", async (req, res) => {
 		}
 
 		await user.save();
-		res.status(200).json({ message: "User updated successfully", user });
+		return res.status(200).json({ message: "User updated successfully", user });
 	} catch (error) {
-		res.status(500).json({ message: "Server Error", error: error.message });
+		return res.status(500).json({ message: "Server Error", error: error.message });
 	}
 });
 
@@ -90,9 +93,9 @@ router.post("/delete/:id", async (req, res) => {
 		}
 
 		await user.destroy();
-		res.status(200).json({ message: "User deleted successfully" });
+		return res.status(200).json({ message: "User deleted successfully" });
 	} catch (err) {
-		res.status(400).json({ error: "Failed to find user" });
+		return res.status(400).json({ error: "Failed to find user" });
 	}
 });
 
@@ -108,9 +111,9 @@ router.get("/get-user-details-by/:id", async (req, res) => {
 	});
 
 	try {
-		res.status(201).json(user);
+		return res.status(201).json(user);
 	} catch (error) {
-		res.status(501).json(error);
+		return res.status(501).json(error);
 	}
 });
 
@@ -160,7 +163,7 @@ router.post("/update-user-details/:id", async (req, res) => {
 			});
 			if (updated) {
 				const updatedUser = await User.findOne({ where: { id: id } });
-				res.status(200).json({
+				return res.status(200).json({
 					success: true,
 					user: updatedUser,
 				});
@@ -168,8 +171,7 @@ router.post("/update-user-details/:id", async (req, res) => {
 				throw new Error("User not found");
 			}
 		} catch (error) {
-			console.log(error);
-			res.status(500).json({ error: "Failed to update user" });
+			return res.status(500).json({ error: "Failed to update user" });
 		}
 	}
 });
@@ -178,9 +180,9 @@ router.get("/get-all-users", async (req, res) => {
   const users = await User.findAll();
 
   try {
-    res.status(201).json(users);
+    return res.status(201).json(users);
   } catch (error) {
-    res.status(501).json({
+    return res.status(501).json({
       message: "There has been an error"
     })
   }

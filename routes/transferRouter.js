@@ -46,7 +46,6 @@ router.post('/delete/:id', async (req, res) => {
 
 router.get("/get-transfer-by/:id", async (req, res) => {
     const id = req.params.id;
-    console.log(id);
 
     try {
         const transfer = await Transfer.findOne({

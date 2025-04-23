@@ -2,25 +2,26 @@ const express = require("express");
 const router = express.Router();
 
 const { Doctor, Patient, Appointment, Schedule, User, Ward, Floor } = require('../models');
+const sequelize = require("../db");
 
 const checkRole = require("../middleware/checkRole");
 
 
 router.get("/", checkRole(["super-admin"]), async (req, res) => {
-    console.log("someone is tryiing to get the wards");
     try {
         const floors = await Floor.findAll();
 
-        console.log(floors);
-
-        res.status(201).json(floors);
+        return res.status(201).json(floors);
     } catch (error) {
-        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "There was an error fetching the floors.",
+        });
     }
 })
 
 router.post("/create", checkRole(["super-admin"]), async (req, res) => {
-    console.log(req.body);
+	const transaction = await sequelize.transaction();
 
     if (!req.body.floorName || !req.body.floorNumber) {
         throw new Error("There is no floorname and no floor number");
@@ -28,10 +29,15 @@ router.post("/create", checkRole(["super-admin"]), async (req, res) => {
     }
 
     try {
-        const floor = await Floor.create(req.body);
-        res.status(201).json(floor);
+        const floor = await Floor.create(req.body, { transaction });
+        await transaction.commit();
+        return res.status(201).json(floor);
     } catch (error) {
-        console.log(error);
+        await transaction.rollback();
+        return res.status(500).json({
+            success: false,
+            message: "There was an error creating the floors.",
+        });
     }
 })
 
@@ -45,9 +51,12 @@ router.get("/get-floor-by/:id", checkRole(["super-admin"]), async (req, res) => 
             }
         })
 
-        res.status(201).json(floor);
+        return res.status(201).json(floor);
     } catch (error) {
-        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Could not get floor"
+        });
     }
 })
 
@@ -69,28 +78,36 @@ router.get("/get-floor-wards-by/:id", checkRole(["super-admin"]), async (req, re
             ]
         })
 
-        console.log()
-
-        res.status(201).json(floor);
+        return res.status(201).json(floor);
     } catch (error) {
-        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Could not get floor's wards"
+        });
     }
 })
 
 router.post('/delete/:id', checkRole(["super-admin"]), async (req, res) => {
+	const transaction = await sequelize.transaction();
     const { id } = req.params;
   
     try {
       const floor = await Floor.findByPk(id);
   
       if (!floor) {
+        await transaction.rollback();
         return res.status(404).json({ message: "Floor not found" });
       }
   
-      await floor.destroy();
-      res.status(200).json({ message: "Floor deleted successfully" });
+      await floor.destroy({ transaction });
+      await transaction.commit();
+      return res.status(200).json({ message: "Floor deleted successfully" });
     } catch (error) {
-        console.log(error);
+        await transaction.rollback();
+        return res.status(500).json({
+            success: false,
+            message: "There was an error deleting the floor"
+        });
     }
   })
 

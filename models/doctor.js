@@ -49,7 +49,7 @@ const Doctor = sequelize.define(
             type: DataTypes.STRING,
             allowNull: false,
             validate: {
-                is: [/^\+?[0-9\s\-()]+$/i] // Allows +, spaces, dashes, and parentheses
+                is: [/^\+?[0-9\s\-()]+$/i]
             }
         },
         addressLine1: {

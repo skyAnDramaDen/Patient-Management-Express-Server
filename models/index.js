@@ -18,6 +18,7 @@ const HospitalCharge = require("./hospitalCharge");
 const BillingCategory = require("./billingCategory");
 const BillingInformation = require("./billingInformation");
 const ChargeBreakdown = require("./chargeBreakdown");
+const Nurse = require("./nurse");
 
 Doctor.belongsToMany(Patient, { through: 'DoctorPatient' });
 Patient.belongsToMany(Doctor, { through: 'DoctorPatient' });
@@ -28,6 +29,9 @@ Doctor.belongsTo(User, { foreignKey: 'userId' });
 User.hasOne(Patient, { foreignKey: 'userId' });
 Patient.belongsTo(User, { foreignKey: 'userId' });
 
+User.hasOne(Nurse, { foreignKey: 'userId' });
+Nurse.belongsTo(User, { foreignKey: 'userId' });
+
 Doctor.hasMany(Appointment, { foreignKey: 'doctorId', as: "appointments" });
 Appointment.belongsTo(Doctor, { foreignKey: 'doctorId', as: "doctor" });
 
@@ -37,7 +41,9 @@ Appointment.belongsTo(Patient, { foreignKey: 'patientId', as: "patient" });
 Doctor.hasMany(Schedule, { foreignKey: 'doctorId', as: "schedules" });
 Schedule.belongsTo(Doctor, { foreignKey: 'doctorId', as: "doctor" });
 
-//below is the correct way
+Nurse.hasMany(Schedule, { foreignKey: 'nurseId', as: "schedules" });
+Schedule.belongsTo(Nurse, { foreignKey: 'nurseId', as: "nurse" });
+
 Patient.hasOne(MedicalRecord, { foreignKey: "patientId", as: 'medical_record' });
 MedicalRecord.belongsTo(Patient, { foreignKey: "patientId", as: 'patient' });
 
@@ -112,6 +118,7 @@ ChargeBreakdown.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission
     await BillingCategory.sync();
     await BillingInformation.sync();
     await ChargeBreakdown.sync();
+    await Nurse.sync();
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true });
     console.log('Database synchronized successfully.');
   } catch (error) {
@@ -119,4 +126,4 @@ ChargeBreakdown.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission
   }
 })();
 
-module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor, Room, Bed, Admission, Transfer, WardAdmission, HospitalCharge, BillingCategory, BillingInformation, ChargeBreakdown };
+module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor, Room, Bed, Admission, Transfer, WardAdmission, HospitalCharge, BillingCategory, BillingInformation, ChargeBreakdown, Nurse };
