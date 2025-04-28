@@ -49,23 +49,6 @@ const getDateAfterNumberOfDays = (daysToAdd, date) => {
     return newDate.toDateString();
 }
 
-const findNextSunday = () => {
-    let today = new Date();
-    let nextSunday = new Date(today);
-
-    while (nextSunday.getDay() !== 0) {
-        nextSunday.setDate(nextSunday.getDate() + 1);
-    }
-
-    const date = new Date(nextSunday);
-    
-    const formattedDate = date.toISOString().split("T")[0];
-    return {
-        formattedDate: formattedDate,
-        nextSunday: nextSunday.toDateString(),
-    };
-};
-
 const convertTimeToYYYYMMDDFormat = (date_to_be_formatted) => {
     const date = new Date(date_to_be_formatted);
 
@@ -93,7 +76,6 @@ router.post("/create", checkRole(["admin", "super-admin"]), async (req, res) => 
 
     const now = new Date();
 
-
     const shiftDuration = req.body.endTime;
     try {
         let scheduleData;
@@ -115,14 +97,6 @@ router.post("/create", checkRole(["admin", "super-admin"]), async (req, res) => 
                 status: status,
                 nurseId: nurseId
             };
-        }
-
-        if (formattedDate < now) {
-            await transaction.rollback();
-            return res.status(401).json({
-                success: false,
-                message: "Cannot add a schedule for a date that is in the past",
-            });
         }
 
         let fetched_doctor;
@@ -170,7 +144,7 @@ router.post("/create", checkRole(["admin", "super-admin"]), async (req, res) => 
         if (nurseId) {
             if (fetched_nurse) {
                 if (fetched_nurse.schedules.length > 0) {
-                    transaction.rollback();
+                    await transaction.rollback();
                     return res.status(400).json({
                         success: false,
                         message: "Nurse is scheduled for the same day already."
@@ -182,7 +156,7 @@ router.post("/create", checkRole(["admin", "super-admin"]), async (req, res) => 
         if (doctorId) {
             if (fetched_doctor) {
                 if (fetched_doctor.schedules.length > 0) {
-                    transaction.rollback();
+                    await transaction.rollback();
                     return res.status(400).json({
                         success: false,
                         message: "Doctor is scheduled for the same day already."
@@ -192,7 +166,7 @@ router.post("/create", checkRole(["admin", "super-admin"]), async (req, res) => 
         }
         
         if (dateOnly > formattedDate) {
-            transaction.rollback();
+            await transaction.rollback();
             return res.status(408).json({
                 success: false,
                 message: "Cannot create a schedule for a date that is in the past.",
@@ -200,29 +174,35 @@ router.post("/create", checkRole(["admin", "super-admin"]), async (req, res) => 
             })
         } else {
             const schedule = await Schedule.create(scheduleData, { transaction });
-            transaction.commit();
+            await transaction.commit();
             return res.status(201).json(schedule);
         }
     } catch (err) {
-        transaction.rollback();
+        await transaction.rollback();
         return res.status(500).json(err);
     }
 });
 
 router.post('/delete/:id', checkRole(["admin, super-admin"]), async (req, res) => {
+    const transaction = await sequelize.transaction();
     const { id } = req.params;
   
     try {
       const schedule = await Schedule.findByPk(id);
   
       if (!schedule) {
+        transaction.rollback();
         return res.status(404).json({ message: "Schedule not found" });
       }
   
-      await schedule.destroy();
+      await schedule.destroy({ transaction });
       return res.status(200).json({ message: "Schedule deleted successfully" });
     } catch (error) {
-        console.log(error);
+        await transaction.rollback();
+        return res.status(200).json({
+            success: false,
+            message: "Schedule deleted successfully"
+        });
     }
 })
 
@@ -248,13 +228,13 @@ router.post("/cancel-schedule", checkRole(["admin", "super-admin"]), async (req,
 
         await fetched_schedule.destroy({ transaction });
         await transaction.commit();
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             id: schedule.id,
         })
     } catch (error) {
         await transaction.rollback();
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "There was an error cancelling the scheduling."
         })
@@ -263,7 +243,7 @@ router.post("/cancel-schedule", checkRole(["admin", "super-admin"]), async (req,
 
 router.post("/create-schedule-for-coming-week", checkRole(["super-admin", "admin"]), async (req, res) => {
 	const transaction = await sequelize.transaction();
-    const { weekdays, doctorId, nurseId } = req.body;
+    const { weekdays, doctorId, nurseId, nextSunday } = req.body;
     
     try {
         let doctor;
@@ -300,8 +280,6 @@ router.post("/create-schedule-for-coming-week", checkRole(["super-admin", "admin
                 });
             }
         }
-
-        const { formattedDate, nextSunday } = findNextSunday();
         
         let existing_schedules;
         if (doctor) {
@@ -345,6 +323,11 @@ router.post("/create-schedule-for-coming-week", checkRole(["super-admin", "admin
             );
 
             const conflict = existing_schedules.some(s => s.date === scheduleDate);
+
+            const conflictSchedules = existing_schedules.filter(s => 
+                new Date(s.date).toISOString().split('T')[0] === new Date(scheduleDate).toISOString().split('T')[0]
+            );
+
             if (conflict) {
                 await transaction.rollback();
                 return res.status(409).json({

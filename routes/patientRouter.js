@@ -39,7 +39,7 @@ router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
 			offset: page * pageSize,
 		});
 
-		res.json({
+		return res.json({
 			patients,
 			totalRecords,
 			totalPages: Math.ceil(totalRecords / pageSize),
@@ -50,7 +50,7 @@ router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
 		// // console.log(patients);
 		// res.json(patients);
 	} catch (error) {
-		res.status(500).json({ error: "Failed to fetch patients" });
+		return res.status(500).json({ error: "Failed to fetch patients" });
 	}
 });
 
@@ -72,9 +72,9 @@ router.get("/patients-list", checkRole(["nurse", "doctor", "super-admin"]), asyn
 			})
 		}
 
-		res.status(201).json(patients);
+		return res.status(201).json(patients);
 	} catch (error) {
-		res.status(501).json({
+		return res.status(501).json({
 			message: "There has been a server side error"
 		})
 	}
@@ -107,10 +107,10 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
 		const medicalRecord = await MedicalRecord.create({ patientId: patient.id }, { transaction });
 		await transaction.commit();
 
-		res.status(201).json(patient);
+		return res.status(201).json(patient);
 	} catch (err) {
 		await transaction.rollback();
-		res.status(500).json(err);
+		return res.status(500).json(err);
 	}
 });
 
@@ -141,20 +141,25 @@ router.get("/get-patients-by-name", checkRole(["nurse", "super-admin"]), async (
 	}
 });
 
-router.put("/edit/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
+router.post("/edit/:id", checkRole(["nurse", "super-admin"]), async (req, res) => {
 	try {
 		const { id } = req.params;
+		console.log(id);
 		const [updated] = await Patient.update(req.body, {
 			where: { id: id },
 		});
 		if (updated) {
 			const updatedPatient = await Patient.findOne({ where: { id: id } });
-			res.status(200).json(updatedPatient);
+			return res.status(200).json(updatedPatient);
 		} else {
-			throw new Error("Patient not found");
+			return res.status(500).json({
+				success: false,
+				message: "Could not update patient"
+			});
 		}
 	} catch (err) {
-		res.status(500).json({ error: "Failed to update patient" });
+		console.log(err);
+		return res.status(500).json({ error: "Failed to update patient" });
 	}
 });
 

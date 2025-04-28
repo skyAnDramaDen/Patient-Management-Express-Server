@@ -214,7 +214,7 @@ router.get("/doctor-appointments/:id", checkRole(["super-admin", "doctor"]), asy
     }
 });
 
-router.get("/scheduled-for/:date", checkRole(["super-admin", "admin"]), async (req, res) => {
+router.get("/scheduled-for/:date", checkRole(["super-admin", "admin",  "nurse"]), async (req, res) => {
     const date = req.params.date;
 
     const formattedDate = new Date(date).toISOString().split("T")[0]; 

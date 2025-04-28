@@ -19,6 +19,9 @@ const BillingCategory = require("./billingCategory");
 const BillingInformation = require("./billingInformation");
 const ChargeBreakdown = require("./chargeBreakdown");
 const Nurse = require("./nurse");
+const Vital = require("./vital");
+const WardNurse = require("./wardNurse");
+const PatientNurse = require("./patientNurse");
 
 Doctor.belongsToMany(Patient, { through: 'DoctorPatient' });
 Patient.belongsToMany(Doctor, { through: 'DoctorPatient' });
@@ -75,7 +78,7 @@ Transfer.belongsTo(Bed, { foreignKey: 'previousBedId', as: 'previousBed' });
 Transfer.belongsTo(Bed, { foreignKey: 'currentBedId', as: 'currentBed' });
 
 Admission.hasMany(WardAdmission, { foreignKey: 'admissionId', as: 'wardAdmissions' });
-WardAdmission.belongsTo(Admission, { foreignKey: 'admissionId', as: "admission" });
+WardAdmission.belongsTo(Admission, { foreignKey: 'admissionId', as: "admissionWard" });
 
 Ward.hasMany(WardAdmission, { foreignKey: 'wardId', as: 'wardAdmissions' });
 WardAdmission.belongsTo(Ward, { foreignKey: 'wardId', as: "ward" });
@@ -98,6 +101,25 @@ ChargeBreakdown.belongsTo(BillingCategory, { foreignKey: 'billingCategoryId', as
 Admission.hasMany(ChargeBreakdown, { foreignKey: 'admissionId', as: 'chargeBreakdowns' });
 ChargeBreakdown.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission' });
 
+Patient.hasMany(Vital, { foreignKey: 'patientId', as: "vital" });
+Vital.belongsTo(Patient, { foreignKey: 'patientId', as: "vitalPatient" });
+
+Patient.belongsToMany(Nurse, { through: 'patient_nurse', foreignKey: 'patientId', otherKey: 'nurseId' });
+Nurse.belongsToMany(Patient, { through: 'patient_nurse', foreignKey: 'nurseId', otherKey: 'patientId' });
+
+Ward.belongsToMany(Nurse, { through: 'ward_nurse', foreignKey: 'wardId', otherKey: 'nurseId' });
+Nurse.belongsToMany(Ward, { through: 'ward_nurse', foreignKey: 'nurseId', otherKey: 'wardId' });
+
+PatientNurse.belongsTo(Admission, { foreignKey: "admissionId", as: "admission" });
+Admission.hasMany(PatientNurse, { foreignKey: "admissionId", as: "patientNurse" });
+
+PatientNurse.belongsTo(Nurse, { foreignKey: 'nurseId', as: "nurse" });
+Nurse.hasMany(PatientNurse, { foreignKey: 'nurseId', as: "patientNurse" });
+
+PatientNurse.belongsTo(Patient, { foreignKey: "patientId", as: "patient" });
+Patient.hasMany(PatientNurse, { foreignKey: "patientId", as: "patientNurse" });
+
+
 (async () => {
   try {
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 0', { raw: true });
@@ -119,6 +141,8 @@ ChargeBreakdown.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission
     await BillingInformation.sync();
     await ChargeBreakdown.sync();
     await Nurse.sync();
+    await PatientNurse.sync();
+    await WardNurse.sync();
     await sequelize.query('SET FOREIGN_KEY_CHECKS = 1', { raw: true });
     console.log('Database synchronized successfully.');
   } catch (error) {
@@ -126,4 +150,4 @@ ChargeBreakdown.belongsTo(Admission, { foreignKey: 'admissionId', as: 'admission
   }
 })();
 
-module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor, Room, Bed, Admission, Transfer, WardAdmission, HospitalCharge, BillingCategory, BillingInformation, ChargeBreakdown, Nurse };
+module.exports = { User, Doctor, Patient, DoctorPatient, Appointment, Schedule, MedicalRecord, Message, Ward, Floor, Room, Bed, Admission, Transfer, WardAdmission, HospitalCharge, BillingCategory, BillingInformation, ChargeBreakdown, Nurse, Vital, PatientNurse, WardNurse };

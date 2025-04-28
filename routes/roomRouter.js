@@ -4,23 +4,20 @@ const router = express.Router();
 const { Doctor, Patient, Appointment, Schedule, User, Ward, Room } = require('../models');
 
 router.get("/", async (req, res) => {
-    console.log("someone is tryiing to get the rooms router here now time");
     try {
         const rooms = Room.findAll();
 
-        res.status(201).json(rooms);
+        return res.status(201).json(rooms);
     } catch (error) {
-        console.log(error);
+        return res.status(500).json(error);
     }
 })
 
 router.post("/create", async (req, res) => {
-    console.log(req.body);
-    console.log("What the hell are you going to do");
 
     try {
         const room = await Room.create(req.body);
-        res.status(201).json(room);
+        return res.status(201).json(room);
     } catch (error) {
         const error_message = error.errors[0].type + ": " + error.errors[0].message;
         res.status(500).json({

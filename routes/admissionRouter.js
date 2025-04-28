@@ -22,6 +22,9 @@ const {
 	BillingCategory,
 	BillingInformation,
 	ChargeBreakdown,
+	PatientNurse,
+	WardNurse,
+	Nurse,
 } = require("../models");
 
 const checkRole = require("../middleware/checkRole");
@@ -37,6 +40,24 @@ router.get("/", checkRole(["nurse", "super-admin"]), async (req, res) => {
 					model: Patient,
 					as: "admissionPatient",
 					required: true,
+				},
+				{
+					model: WardAdmission,
+					as: "wardAdmissions",
+					required: true,
+					include: [
+						{
+							model: Ward,
+							as: "ward",
+							required: true,
+							include: [
+								{
+									model: Floor,
+									as: "floor"
+								}
+							]
+						},
+					],
 				},
 			],
 		});
@@ -55,6 +76,7 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
 		wardId: wardId,
 		type: type,
 	} = req.body;
+
 	const now = new Date();
 
 	const admission_data = {
@@ -111,13 +133,13 @@ router.post("/create", checkRole(["nurse", "super-admin"]), async (req, res) => 
 			quantity: 1,
 			ratePerUnit: admissionFeeCategory.rate,
 			totalCharge: admissionFeeCategory.rate * 1,
-		});
+		}, { transaction });
 
 		await WardAdmission.create({
 			admissionId: admission.id,
 			wardId: wardId,
 			transferDate: admission.admissionDate,
-		});
+		}, { transaction });
 
 		await transaction.commit();
 
@@ -681,6 +703,7 @@ router.post("/discharge-patient/:id", checkRole(["nurse", "super-admin"]), async
 		});
 
         if (!admission) {
+			await transaction.rollback();
             return res.status(404).json({
                 success: false,
                 message: "No active admission found for this patient.",
@@ -688,6 +711,7 @@ router.post("/discharge-patient/:id", checkRole(["nurse", "super-admin"]), async
         }
 
         if (admission.status == "discharged") {
+			await transaction.rollback();
             return res.status(200).json({
                 success: true,
                 message: "The patient has been discharged already.",
@@ -698,7 +722,7 @@ router.post("/discharge-patient/:id", checkRole(["nurse", "super-admin"]), async
 
 		admission.status = "discharged";
 		admission.paymentType = payment_type;
-		await admission.save();
+		await admission.save({ transaction });
         await transaction.commit();
 		return res.status(201).json({
 			success: true,
@@ -713,5 +737,119 @@ router.post("/discharge-patient/:id", checkRole(["nurse", "super-admin"]), async
         });
 	}
 });
+
+router.post("/assign-patient-nurse", checkRole(["super-admin", "admin"]), async (req, res) => {
+	const transaction = await sequelize.transaction();
+	const { patientId, nurseId, admissionId } = req.body;
+	let nurse;
+
+	console.log(req.body);
+
+	try {
+		const existing_patient_nurse = await PatientNurse.findOne({
+			where: {
+				patientId,
+				admissionId,
+			}
+		})
+	
+		if (existing_patient_nurse) {
+			if (existing_patient_nurse.nurseId == nurseId) {
+				await transaction.rollback();
+				return res.status(409).json({
+					success: false,
+					message: "The nurse is already assigned to the patient"
+				});
+			}
+
+			existing_patient_nurse.nurseId = nurseId;
+			await existing_patient_nurse.save({ transaction });
+			await transaction.commit();
+
+			nurse = await Nurse.findOne({
+				where: {
+					id: nurseId,
+				},
+			})
+
+			if (!nurse) {
+				await transaction.rollback();
+				return res.status(400).json({
+					success: false,
+					message: "No nure was found"
+				});
+			}
+
+			return res.status(200).json({
+				success: true,
+				nurse: nurse,
+			});
+		} else {
+			const patient_nurse = await PatientNurse.create({ patientId, nurseId, admissionId }, { transaction });
+			await transaction.commit();
+
+			nurse = await Nurse.findOne({
+				where: {
+					id: nurseId,
+				},
+			})
+
+			if (!nurse) {
+				await transaction.rollback();
+				return res.status(400).json({
+					success: false,
+					message: "No nure was found"
+				});
+			}
+
+			return res.status(200).json({
+				nurse: nurse,
+				success: true,
+			});
+		}
+	} catch (error) {
+		await transaction.rollback();
+		return res.status(500).json(error);
+	}
+})
+
+router.post("/get-assigned-nurse", checkRole(["super-admin", "admin"]), async (req, res) => {
+	const { patientId, admissionId } = req.body;
+
+	console.log(patientId, admissionId);
+
+	try {
+		const existing_patient_nurse = await PatientNurse.findOne({
+			where: {
+				patientId: patientId,
+				admissionId: admissionId,
+			},
+			include: [
+				{
+				  model: Admission,
+				  as: "admission",
+				  where: { patientId, status: 'admitted' },
+				  required: true,
+				},
+				{
+				  model: Nurse,
+				  as: "nurse",
+				  required: true,
+				}
+			]
+		})
+
+		return res.status(200).json({
+			success: true,
+			assignedNurse: existing_patient_nurse,
+		})
+	} catch (error) {
+		return res.status(500).json({
+			success: false,
+			message: "There was an eerror fetching the assigned nurse",
+		})
+	}
+
+})
 
 module.exports = router;

@@ -100,6 +100,7 @@ const bedRouter = require("./routes/bedRouter.js");
 const admissionRouter = require("./routes/admissionRouter.js");
 const billingCategoryRouter = require("./routes/billingCategoryRouter.js");
 const nurseRouter = require("./routes/nurseRouter.js");
+const messageRouter = require("./routes/messageRouter.js");
 
 app.use('/patients', patientRouter);
 app.use('/doctors', doctorRouter);
@@ -115,6 +116,7 @@ app.use('/beds', bedRouter);
 app.use('/admissions', admissionRouter);
 app.use('/billingCategory', billingCategoryRouter);
 app.use('/nurses', nurseRouter);
+app.use('/messages', messageRouter);
 
 app.get("/", (req, res) => {
     console.log("This is the get first 111");
